@@ -25,6 +25,8 @@ if __name__ == '__main__':
     if len( sys.argv ) < 2:
         sys.exit( '\nERROR: Missing input config file .cfg!\n' )
     cfg_file = sys.argv[1]
+    cfg = open( cfg_file , 'r' )
+    exec( cfg )
 
 
     ##  Step 1  -->  Create training dataset
@@ -40,6 +42,10 @@ if __name__ == '__main__':
            
     
     ##  Step 3  -->  Reconstruction with trained filters
+    if output_path[len(output_path)-1] != '/':
+        output_path += '/'
+    command = 'cp config.cfg ' + output_path
+    os.system( command )
     command = 'python -W ignore reconstruct.py ' + cfg_file
     print( '\n\nSTEP 3\n' , command )
     os.system( command )     

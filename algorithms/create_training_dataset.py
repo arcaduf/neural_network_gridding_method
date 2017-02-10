@@ -53,7 +53,7 @@ myint = np.int
 ##########################################################
 ##########################################################
 
-def reconstr_filter_custom( sino , angles , ctr , filt_custom , picked  , nhh , l ):
+def reconstr_filter_custom( sino , angles , ctr , filt_custom , picked ):
     ##  Prepare filter
     n         = len( filt_custom )
     nh        = np.int( 0.5 * n )
@@ -62,18 +62,55 @@ def reconstr_filter_custom( sino , angles , ctr , filt_custom , picked  , nhh , 
       
     ##  Reconstruction
     reco = utils.fbp( sino , angles , [ctr,0.0] , filt )
-    #import myImageDisplay as dis
-    #dis.plot( reco , 'Reconstr j='+str(ind) )
     
     ##  Pick up only selected pixels
-    #reco = reco[ picked ]  
-
-    reco = reco[nhh-l:nhh+l,nhh-l:nhh+l].reshape( -1 )
+    reco = reco[ picked ]  
     
     return reco
 
 
 
+
+##########################################################
+##########################################################
+####                                                  ####
+####                CREATE TRAINING FILE              ####
+####                                                  ####
+##########################################################
+##########################################################
+  
+def create_training_file( input_path , train_path , filein , angles , npix_train_slice , 
+                          idx , nang_lq , ctr_hq , nfilt , filt_custom ):
+    ##  Read high-quality sinogram
+    sino_hq = io.readImage( input_path + filein ).astype( myfloat )
+    
+    ##  Reconstruct high-quality sinogram with standard filter
+    reco_hq = utils.fbp( sino_hq , angles , [ctr_hq,1.0] , None ) 
+
+    ##  Create output training array
+    train_data = np.zeros( ( npix_train_slice , nfilt+1 ) , dtype=myfloat ) 
+        
+    ##  Randomly select training pixels
+    picked = utils.getPickedIndices( idx , npix_train_slice )
+    
+    ##  Save validation data
+    train_data[:,-1] = reco_hq[picked]
+        
+    ##  Downsample sinogram
+    sino_lq , angles_lq = utils.downsample_sinogram_angles( sino_hq , angles , nang_lq )
+    
+    ##  Reconstruct low-quality sinograms with customized filters
+    for j in range( nfilt ):
+        train_data[:,j] = reconstr_filter_custom( sino_lq , angles_lq , ctr_hq , filt_custom[j,:] , picked )
+
+    ##  Save training data
+    filename = filein
+    fileout  = train_path + filename[:len(filename)-4] + '_train.npy'
+    np.save( fileout , train_data )
+    print( '\nTraining data saved in:\n', fileout ) 
+
+
+ 
     
 ##########################################################
 ##########################################################
@@ -151,58 +188,41 @@ def main():
     
     
     ##  Create training dataset 
-    print( '\nCreating training dataset ....' , end='' ) 
+    print( '\nCreating training dataset ....' ) 
     
-    ncores_avail = mproc.cpu_count
+    ncores_avail = mproc.cpu_count()
     if ncores > ncores_avail:
-        ncores =  ncores_avail 
+        ncores =  ncores_avail        
+    print( 'Working with ncores: ' , ncores )
+
         
+    if slice_ind_1 > 0 and slice_ind_1 <= nfiles:
+        ind_1 = slice_ind_1
+    else:
+        ind_1 = 0
+        
+    if slice_ind_2 > 0 and slice_ind_2 <= nfiles:
+        ind_2 = slice_ind_2
+    else:
+        ind_2 = nfiles   
+    print( 'Start slice index: ' , ind_1 )
+    print( 'End slice index: ' , ind_2 )
     
-    for i in range( nfiles ):
-        ##  Read high-quality sinogram
-        sino_hq = io.readImage( input_path + file_list[0][i] ).astype( myfloat ) 
-
-        ##  Reconstruct high-quality sinogram with standard filter
-        reco_hq = utils.fbp( sino_hq , angles , [ctr_hq,1.0] , None )            
-        
-        ##  Create output training array
-        train_data = np.zeros( ( npix_train_slice , nfilt+1 ) , dtype=myfloat )
-        
-        ##  Randomly select training pixels
-        picked = utils.getPickedIndices( idx , npix_train_slice )
-        
-        ##  Save validation data
-        #train_data[:,-1] = reco_hq[picked]
-        train_data[:,-1] = reco_hq[nh-l:nh+l,nh-l:nh+l].reshape( -1 )
-        
-        ##  Downsample sinogram
-        sino_lq , angles_lq = utils.downsample_sinogram_angles( sino_hq , angles , nang_lq )
-        
-        ##  Reconstruct low-quality sinograms with customized filters
-        #pool = mproc.Pool( processes=ncores )
-        #results = [ pool.apply_async( reconstr_filter_custom , 
-        #                              args=( sino_lq , angles_lq , ctr_hq , filt_custom[j,:] , picked ) ) \
-        #                              for j in range( nfilt ) ]
-        #train_data[:,:nfilt] = np.array( [ res.get() for res in results ] ).reshape( npix_train_slice , nfilt )
-        #pool.close()
-        #pool.join()
-        
-        for j in range( nfilt ):
-            train_data[:,j] = reconstr_filter_custom( sino_lq , angles_lq , ctr_hq , filt_custom[j,:] , picked , nh , l )
-
-        ##  Save training data
-        filename = file_list[0][i]
-        fileout  = train_path + filename[:len(filename)-4] + '_train.npy'
-        np.save( fileout , train_data )
-        print( '\nTraining data saved in:\n', fileout ) 
-        
-        #filename = file_list[0][i]
-        #fileout  = train_path + filename[:len(filename)-4] + '_reco.DMP'        
-        #io.writeImage( fileout , reco_hq )
-        
-    print( '\n' )   
+    pool = mproc.Pool( processes=ncores )
+    for i in range( ind_1 , ind_2 ):
+        pool.apply_async( create_training_file , 
+                          ( input_path , train_path , file_list[0][i] , angles ,
+                            npix_train_slice , idx , nang_lq , ctr_hq , nfilt ,
+                            filt_custom ) 
+                        )            
+    pool.close()
+    pool.join()
     
-
+    #for i in range( ind_1 , ind_2 ):
+    #    create_training_file( input_path , train_path , file_list[0][i] , angles , npix_train_slice , 
+    #                          idx , nang_lq , ctr_hq , nfilt , filt_custom )
+    
+    
 
 
 ##########################################################

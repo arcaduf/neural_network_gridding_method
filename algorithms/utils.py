@@ -349,5 +349,7 @@ def select_filter( ctr , filt ):
         params = [ctr,5.0]
     elif filt == 'parz':
         params = [ctr,6.0]
+    else:
+        params = [ctr,6.0]
     return params    
     

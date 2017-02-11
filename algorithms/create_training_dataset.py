@@ -80,13 +80,14 @@ def reconstr_filter_custom( sino , angles , ctr , filt_custom , picked ):
 ##########################################################
   
 def create_training_file( input_path , train_path , filein , angles , npix_train_slice , 
-                          idx , nang_lq , ctr_hq , nfilt , filt_custom ):
+                          idx , nang_lq , ctr_hq , nfilt , filt_custom , filt ):
     ##  Read high-quality sinogram
     sino_hq = io.readImage( input_path + filein ).astype( myfloat )
     
     ##  Reconstruct high-quality sinogram with standard filter
-    reco_hq = utils.fbp( sino_hq , angles , [ctr_hq,1.0] , None ) 
-
+    params = utils.select_filter( ctr_hq , filt )
+    reco_hq = utils.fbp( sino_hq , angles , params , None )
+        
     ##  Create output training array
     train_data = np.zeros( ( npix_train_slice , nfilt+1 ) , dtype=myfloat ) 
         
@@ -213,14 +214,14 @@ def main():
         pool.apply_async( create_training_file , 
                           ( input_path , train_path , file_list[0][i] , angles ,
                             npix_train_slice , idx , nang_lq , ctr_hq , nfilt ,
-                            filt_custom ) 
+                            filt_custom , filt ) 
                         )            
     pool.close()
     pool.join()
     
     #for i in range( ind_1 , ind_2 ):
     #    create_training_file( input_path , train_path , file_list[0][i] , angles , npix_train_slice , 
-    #                          idx , nang_lq , ctr_hq , nfilt , filt_custom )
+    #                          idx , nang_lq , ctr_hq , nfilt , filt_custom , filt )
     
     
 

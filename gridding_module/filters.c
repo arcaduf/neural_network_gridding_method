@@ -1,34 +1,40 @@
-#ifndef _FFT_C
-#define _FFT_C  
-#include "fft.h"
-#endif
+//#ifndef _FFT_C
+//#define _FFT_C  
+//#include "fft.h"
+//#endif
+
+#include <fftw3.h>
 
 #define PI 3.141592653589793   
 #define myAbs(X) ((X)<0 ? -(X) : (X))
 
 
 
-/*******************************************************************/
-/*******************************************************************/
 /*
- * PARZEN FILTER
+ * RAMP FILTER
  */
-float parzenFilter( float x ){
+
+void ramp( int size , fftwf_complex *ramp_array ) {
+	
+    int i, c;
+    int sizeH = (int)( size * 0.5 );
+  
+    for ( i=0 ; i<size ; i++ ) {
+        c = i - ( sizeH-1 );
     
-  float fm = 0.5;
-  
-  float ffm;
-  
-  ffm = myAbs( x )/fm;
-  
-  if ( myAbs( x ) <= fm/2.)  
-    return (float)( 1 - 6*ffm*ffm*( 1 - ffm ));
-  
-  else if ( myAbs( x ) > fm/2. && myAbs( x ) <= fm ) 
-    return (float)( 2 * (1-ffm) * (1-ffm) * (1-ffm) );
-  
-  else 
-    return 0.0f;
+    /* Real component */
+    if ( c == 0 ) 
+      ramp_array[i][0] = 0.25;
+    
+    else if ( c % 2 == 0)
+      ramp_array[i][0] = 0.0;
+    
+    else
+      ramp_array[i][0] = -1 / ( PI*PI*c*c );
+    
+    /* Imaginary component */
+    ramp_array[i][1] = 0;
+  }
 }
 
 
@@ -36,121 +42,199 @@ float parzenFilter( float x ){
 /*
  *  SHEPP-LOGAN FILTER
  */
-float sheppLoganFilter( float x ){	/* Shepp-Logan filter */
 
-  float fm = 0.5; 
+float shepp_logan( float x , float fm ){
+    float ffm;
   
-  float ffm;
+    ffm = x/(2.*fm);
   
-  ffm = x/(2.*fm);
+    if ( x==0 )
+        return 1.0;
   
-  if ( x==0 )
-    return 1.0;
+    else if ( x<fm )
+        return (float)( sin( PI * ffm )/( PI * ffm ) );
   
-  else if ( x<fm )
-    return (float)( sin( PI * ffm )/( PI * ffm ) );  /* Shepp-Logan window */
-  
-  else
-    return 0.0;
+    else
+        return 0.0;
+}
+
+
+
+/*
+ *  HANNING FILTER
+ */
+     
+float hanning( float x , float fm ){
+    float ffm;
+	ffm = x/fm;
+
+    if ( myAbs(x) <= fm )
+	    return (float)( 0.5 * ( 1.0 + cos( PI*ffm ) ) ); 
+
+    else
+	    return 0.0;
+}
+
+
+
+/*
+ *  HAMMING FILTER
+ */  
+
+float hamming( float x , float fm ){
+    float ffm;
+	ffm = x/fm;
+	
+    if ( myAbs(x) <= fm )
+	  return (float)( 0.54 + 0.46 * cos( PI*ffm ) ); 
+    
+    else
+	  return 0.0;
 } 
 
 
 
 /*
- * RAMP FILTER
+ * LANCZOS
  */
-void rampFilter( int size , float *rampArray ) {
-	
-  int i, j, c;
-  int sizeH = (int)( size * 0.5 );
-  
-  for ( i=0,j=0 ; i<size ; i++,j+=2 ) {
-    c = i - ( sizeH-1 );
+
+float lanczos( float x , float fm ){
+    float ffm;
+	ffm = x/fm;
+
+    if ( x == 0 )
+	    return 1.0;
     
-    /* Real component */
-    if ( c == 0 ) 
-      rampArray[j] = 0.25;
-    
-    else if ( c % 2 == 0)
-      rampArray[j] = 0.0;
-    
+    else if ( x < fm )
+	    return (float)( sin( PI*ffm ) / ( PI*ffm ) ); 
+
     else
-      rampArray[j] = -1 / ( PI*PI*c*c );
-    
-    /* Imaginary component */
-    rampArray[j+1] = 0;
-  }
+	    return 0.0;
 }
+
+
+
+/*
+ * PARZEN FILTER
+ */
+
+float parzen( float x , float fm ){
+    float ffm;
+  
+    ffm = myAbs( x )/fm;
+  
+    if ( myAbs( x ) <= fm/2.)  
+        return (float)( 1 - 6*ffm*ffm*( 1 - ffm ));
+  
+    else if ( myAbs( x ) > fm/2. && myAbs( x ) <= fm ) 
+        return (float)( 2 * (1-ffm) * (1-ffm) * (1-ffm) );
+  
+    else 
+        return 0.0;
+}
+
 
 
 
 /*
  * FILTER FUNCTION
  */
-void calcFilter( float *filter, unsigned long nang, unsigned long N , float center , int flag_filter )
+
+void calc_filter( float *filter, unsigned long nang, unsigned long N , float center , int type_filter )
 { 
-  long i;
-  long j;   // Index running on real part of each component of the filter array
-  long k;   // Index running on spatial frequencies
-  unsigned long N2 = 2 * N;    
-  float x; // Complex exponential whose argument depends on the center
-	    //    of rotation and the selected spatial frequency
-  float filterWeight; // Select a number going from 0 to 1 as weight for the filter
-		       // the default value is 1.0
-  float rtmp1 = (float)( 2*PI*center/N ); // Phase term related to the center of rotation
-				            // to be multiplied with each spatial frequency
-  float rtmp2;
-  float tmp;
-  float norm = (float)( PI/N/nang );
-  float *rampArray;
+    long i; long j; long k; 
+    long N2 =  (long)(N * 0.5);    
+    float x; 
+    float filter_weight = 1.0;
+    float rtmp1 = (float)( 2*PI*center/N ); 
+    float rtmp2;
+    float norm = (float)( PI/N/nang );
+    fftwf_complex *ramp_array; 
+    float fm = 0.5;
+    float tmp1;
+  
 
-
-  filterWeight = 1.0;
-
-  if( flag_filter ){
-    //printf("\nSelected filter: SHEPP-LOGAN + RAMP\n");
-
-    rampArray = (float *)calloc( N2 , sizeof(float) );
-    
-    if ( flag_filter == 1 ) {    
-      for( i=0 ; i<N2 ; i++ )
-	    rampArray[i] = 0.0;
+ 
+    /*
+     *   Create ramp filter if some filtering is selected
+     */
+        
+    if( type_filter ){
+        ramp_array = (fftwf_complex *)fftwf_malloc( N * sizeof(fftwf_complex) ); 
+        
+        for( i=0 ; i<N ; i++ ){
+	        ramp_array[i][0] = 0.0;
+            ramp_array[i][1] = 0.0; 
+        }
       
-      rampFilter( N , rampArray );
+        ramp( N , ramp_array );
 
-      //four1( rampArray-1 , N , 1 );
-      myFour1( rampArray , N , 1 );
+        fftwf_plan p1 = fftwf_plan_dft_1d( N , ramp_array , ramp_array ,
+                                           FFTW_FORWARD , FFTW_ESTIMATE );
+        fftwf_execute(p1);
+        fftwf_destroy_plan(p1);
 
-      for ( i=0,j=0 ; i<N ; i++,j+=2 )
-	    rampArray[i] = sqrt( ( rampArray[j] * rampArray[j] ) +	\
-		                     ( rampArray[j+1] * rampArray[j+1] ) );
+        for ( i=0 ; i<N2 ; i++ )
+	        ramp_array[i][0] = sqrt( ( ramp_array[i][0] * ramp_array[i][0] ) +	\
+		                        ( ramp_array[i][1] * ramp_array[i][1] ) );
 
-      while( i<N2 ){
-	    rampArray[i] = 0.0;
-	    i++;
-      }
+        while( i<N ){
+	        ramp_array[i][0] = 0.0;
+	        ramp_array[i][1] = 0.0; 
+	        i++;
+        }
     }
-  }
-  //else
-  //  printf("\nNo filtering selected\n");
 
+
+  
+    /*
+    * Choose filter to superimpose to the ramp one
+    */
+
+    float ( *filter_add )( float , float );
+
+    // Shepp-Logan filter_add
+    if ( type_filter == 2 )
+        filter_add = shepp_logan;
+
+    // Hanning filter_add
+    else if ( type_filter == 3 )
+        filter_add = hanning;
+
+    // Hamming filter_add
+    else if ( type_filter == 4 )
+        filter_add = hamming;
+
+    // Lanczos filter_add
+    else if ( type_filter == 5 )
+        filter_add = lanczos;
+
+    // Parzen filter_add
+    else if ( type_filter == 6 )
+        filter_add = parzen;
+
+
+
+    /*
+     *  Create reconstruction filter_add + center of rotation corr.
+     */
   
   for( j=0,k=0 ; j<N ; j+=2,k++ ){
     x = k * rtmp1;
-    
-    // Apply filter ( shepp-logan or parzen ) + ramp filter
-    if ( flag_filter == 1 )
-      rtmp2 = ( 1 - filterWeight + filterWeight * sheppLoganFilter( (float)k/N ) * rampArray[k] ) * norm;
 
-    // Apply no filter
-    else
-      rtmp2 = 1.0;
+    if ( type_filter && type_filter != 1 )
+        rtmp2 = ( 1 - filter_weight + filter_weight * ( *filter_add )( (float)k/N , fm ) \
+                * ramp_array[k][0] ) * norm * N;
+    else if ( type_filter == 1 )
+        rtmp2 = ( 1 - filter_weight + filter_weight * ramp_array[k][0] ) * norm * N;
+    else{
+        rtmp2 = 1.0;
+    }
 
-    // Filter value + phase term due to the center of rotation
     filter[j] = rtmp2 * cos(x);
     filter[j+1] = -rtmp2 * sin(x);
   }
 
-  if ( flag_filter == 1 )
-    free( rampArray );
+  if ( type_filter )
+    fftwf_free( ramp_array );
 }

@@ -186,17 +186,17 @@ def main():
     ncores_avail = mproc.cpu_count
     if ncores > ncores_avail:
         ncores =  ncores_avail     
-    '''
+
     pool = mproc.Pool( processes=ncores )
     for i in range( nfiles ):
-        pool.apply_async( reconstr_nnfbp , args=( target_path , output_path , file_list[0][i] , angles , ctr_lq , 
-                                                  weights , offsets , minIn , maxIn , NHidden , filters  ) )
+        pool.apply_async( reconstr_nnfbp , ( target_path , output_path , file_list[0][i] , angles , ctr_lq , 
+                                             weights , offsets , minIn , maxIn , NHidden , filters  ) )
     pool.close()
     pool.join() 
-    '''
-    for i in range( nfiles ):
-        reconstr_nnfbp( target_path , output_path , file_list[0][i] , angles , ctr_lq , 
-                        weights , offsets , minIn , maxIn , NHidden , filters )
+    
+    #for i in range( nfiles ):
+    #    reconstr_nnfbp( target_path , output_path , file_list[0][i] , angles , ctr_lq , 
+    #                    weights , offsets , minIn , maxIn , NHidden , filters )
 
     print( '\n' )    
 

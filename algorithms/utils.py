@@ -328,7 +328,26 @@ def fbp( sino , angles , params , filt ):
 
 
 
+##########################################################
+##########################################################
+####                                                  ####
+####                   Select filter                  ####
+####                                                  ####
+##########################################################
+##########################################################
 
-
-
+def select_filter( ctr , filt ):
+    if filt == 'ramp':
+        params = [ctr,1.0]
+    elif filt == 'shlo':
+        params = [ctr,2.0]
+    elif filt == 'hann':
+        params = [ctr,3.0]
+    elif filt == 'hamm':
+        params = [ctr,4.0]
+    elif filt == 'lanc':
+        params = [ctr,5.0]
+    elif filt == 'parz':
+        params = [ctr,6.0]
+    return params    
     

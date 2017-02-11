@@ -197,7 +197,7 @@ void gridrec_backproj( float *sino , int npix , int nang , float *angles ,
   
   if( flag_filter ){
     filter_stand = (float *)calloc( pdim_d , sizeof(float) );
-    calcFilter( filter_stand , nang , pdim , ctr , flag_filter );      
+    calc_filter( filter_stand , nang , pdim , ctr , flag_filter );      
   } 
   
 

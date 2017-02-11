@@ -56,6 +56,7 @@ def analyze_path( pathin , mode='check' ):
         if mode is 'check':
             sys.exit( '\nERROR: Input path ' + pathin + ' does not exist!\n' )
         elif mode is 'create':
+            shutil.rmtree( pathin )
             os.makedirs( pathin )
                 
     if pathin[len(pathin)-1] != '/':

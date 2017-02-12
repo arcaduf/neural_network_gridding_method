@@ -154,7 +154,7 @@ def main():
     if nfiles == 0:
         sys.exit( '\nERROR: No file *' + input_files_hq + '* found!\n' )
         
-    train_path = utils.analyze_path( train_path , mode='create' )    
+    train_path = utils.analyze_path( train_path , mode='create_new' )    
         
     print( '\nInput data folder:\n' , input_path )
     print( '\nTrain data folder:\n' , train_path )
@@ -205,12 +205,16 @@ def main():
     if slice_ind_2 > 0 and slice_ind_2 <= nfiles:
         ind_2 = slice_ind_2
     else:
-        ind_2 = nfiles   
+        ind_2 = nfiles
+        
+    if take_every <= 0 or take_every >= (ind_2-ind_1):
+        take_every = 1
     print( 'Start slice index: ' , ind_1 )
     print( 'End slice index: ' , ind_2 )
+    print( 'Use 1 slice every ', take_every,' slices' )
     
     pool = mproc.Pool( processes=ncores )
-    for i in range( ind_1 , ind_2 ):
+    for i in range( ind_1 , ind_2 , take_every ):
         pool.apply_async( create_training_file , 
                           ( input_path , train_path , file_list[0][i] , angles ,
                             npix_train_slice , idx , nang_lq , ctr_hq , nfilt ,

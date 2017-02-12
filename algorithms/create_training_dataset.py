@@ -53,7 +53,8 @@ myint = np.int
 ##########################################################
 ##########################################################
 
-def reconstr_filter_custom( sino , angles , ctr , filt_custom , picked ):
+def reconstr_filter_custom( sino , angles , ctr , filt_custom , picked , 
+                            debug , train_path , filein , ind ):
     ##  Prepare filter
     n         = len( filt_custom )
     nh        = np.int( 0.5 * n )
@@ -62,6 +63,13 @@ def reconstr_filter_custom( sino , angles , ctr , filt_custom , picked ):
       
     ##  Reconstruction
     reco = utils.fbp( sino , angles , [ctr,0.0] , filt )
+    
+    ##  Debugging save high- and low-quality reconstructions
+    if debug is True:
+        filedbg = filein
+        ext     = filedbg[len(filedbg)-4:]
+        filedbg += '_lq0' + str( ind ) + ext
+        io.writeImage( train_path + filedbg , reco )    
     
     ##  Pick up only selected pixels
     reco = reco[ picked ]  
@@ -80,13 +88,20 @@ def reconstr_filter_custom( sino , angles , ctr , filt_custom , picked ):
 ##########################################################
   
 def create_training_file( input_path , train_path , filein , angles , npix_train_slice , 
-                          idx , nang_lq , ctr_hq , nfilt , filt_custom , filt ):
+                          idx , nang_lq , ctr_hq , nfilt , filt_custom , filt , debug ):
     ##  Read high-quality sinogram
     sino_hq = io.readImage( input_path + filein ).astype( myfloat )
     
     ##  Reconstruct high-quality sinogram with standard filter
     params = utils.select_filter( ctr_hq , filt )
     reco_hq = utils.fbp( sino_hq , angles , params , None )
+
+    ##  Debugging save high- and low-quality reconstructions
+    if debug is True:
+        filedbg = filein
+        ext     = filedbg[len(filedbg)-4:]
+        filedbg += '_hq' + ext
+        io.writeImage( train_path + filedbg , reco_hq )
         
     ##  Create output training array
     train_data = np.zeros( ( npix_train_slice , nfilt+1 ) , dtype=myfloat ) 
@@ -102,17 +117,18 @@ def create_training_file( input_path , train_path , filein , angles , npix_train
     
     ##  Reconstruct low-quality sinograms with customized filters
     for j in range( nfilt ):
-        train_data[:,j] = reconstr_filter_custom( sino_lq , angles_lq , ctr_hq , filt_custom[j,:] , picked )
+        train_data[:,j] = reconstr_filter_custom( sino_lq , angles_lq , ctr_hq , filt_custom[j,:] , 
+                                                  picked , debug , train_path , filein , j )
 
     ##  Save training data
     filename = filein
     fileout  = train_path + filename[:len(filename)-4] + '_train.npy'
     np.save( fileout , train_data )
-    print( '\nTraining data saved in:\n', fileout ) 
+    print( '\nTraining data saved in:\n', fileout )
+        
 
 
  
-    
 ##########################################################
 ##########################################################
 ####                                                  ####
@@ -212,20 +228,20 @@ def main():
     print( 'Start slice index: ' , ind_1 )
     print( 'End slice index: ' , ind_2 )
     print( 'Use 1 slice every ', take_every,' slices' )
-    
+    '''
     pool = mproc.Pool( processes=ncores )
     for i in range( ind_1 , ind_2 , take_every ):
         pool.apply_async( create_training_file , 
                           ( input_path , train_path , file_list[0][i] , angles ,
                             npix_train_slice , idx , nang_lq , ctr_hq , nfilt ,
-                            filt_custom , filt ) 
+                            filt_custom , filt , debug ) 
                         )            
     pool.close()
     pool.join()
-    
-    #for i in range( ind_1 , ind_2 ):
-    #    create_training_file( input_path , train_path , file_list[0][i] , angles , npix_train_slice , 
-    #                          idx , nang_lq , ctr_hq , nfilt , filt_custom , filt )
+    '''
+    for i in range( ind_1 , ind_2 , take_every ):
+      create_training_file( input_path , train_path , file_list[0][i] , angles , npix_train_slice , 
+                             idx , nang_lq , ctr_hq , nfilt , filt_custom , filt , debug )
     
     
 

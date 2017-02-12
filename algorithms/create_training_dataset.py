@@ -228,7 +228,7 @@ def main():
     print( 'Start slice index: ' , ind_1 )
     print( 'End slice index: ' , ind_2 )
     print( 'Use 1 slice every ', take_every,' slices' )
-    '''
+    
     pool = mproc.Pool( processes=ncores )
     for i in range( ind_1 , ind_2 , take_every ):
         pool.apply_async( create_training_file , 
@@ -238,10 +238,10 @@ def main():
                         )            
     pool.close()
     pool.join()
-    '''
-    for i in range( ind_1 , ind_2 , take_every ):
-      create_training_file( input_path , train_path , file_list[0][i] , angles , npix_train_slice , 
-                             idx , nang_lq , ctr_hq , nfilt , filt_custom , filt , debug )
+    
+    #for i in range( ind_1 , ind_2 , take_every ):
+    #  create_training_file( input_path , train_path , file_list[0][i] , angles , npix_train_slice , 
+    #                         idx , nang_lq , ctr_hq , nfilt , filt_custom , filt , debug )
     
     
 

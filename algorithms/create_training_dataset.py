@@ -169,8 +169,11 @@ def main():
     nfiles = len( file_list[0] )
     if nfiles == 0:
         sys.exit( '\nERROR: No file *' + input_files_hq + '* found!\n' )
-        
-    train_path = utils.analyze_path( train_path , mode='create_new' )    
+    
+    if train_path == input_path:
+        train_path = utils.analyze_path( train_path , mode='check' )
+    else:
+        train_path = utils.analyze_path( train_path , mode='create_new' )    
         
     print( '\nInput data folder:\n' , input_path )
     print( '\nTrain data folder:\n' , train_path )

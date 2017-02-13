@@ -41,6 +41,10 @@ Procedure:
 If `setup.py` runs without giving any error all subroutines in C have been installed and
 your python version meets all dependencies.
 
+If you run `python setup.py 1` (you can use any other character than 1), the 
+all executables, temporary and build folders are deleted, the test data are 
+placed in .zip files. In this way, the repository is restored to its original
+status, right after the download.
 
 
 ##  Test the package

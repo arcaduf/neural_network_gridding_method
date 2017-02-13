@@ -23,24 +23,26 @@ The gridding backprojector is used instead.
 
 ##  Installation
 Basic compilers like gcc and g++ are required.
-The simplest way to install all the code is to use Anaconda with python-2.7 and to atom://welcome/welcome
+The simplest way to install all the code is to use Anaconda with python-2.7 and
 add the installation of the python package scipy, scikit-image and Cython.
 
-On a terminal, just type:
+Procedure:
 
-1. 'conda create -n iter-rec python=2.7 anaconda'.
+1. Create the Anaconda environment (if not already existing): `conda create -n pynn python=2.7 anaconda`.
 
-2. 'conda install -n iter-rec scipy scikit-image Cython'.
+2. Install necessary packages (if not already installed): `conda install -n iter-rec scipy scikit-image Cython`.
 
-3. 'source activate iter-rec'.
+3. Activate environment: 'source activate iter-rec'.
 
-4. download the repo and type: 'python setup.py'.
+4. Download the repo (if not downloaded yet): `git clone git@github.com:arcaduf/pynngrid.git`.
 
-If setup.py runs without giving any error all subroutines in C have been installed and
+5. Go inside the folder and install the C code for the backprojector: `python setup.py`.
+
+If `setup.py` runs without giving any error all subroutines in C have been installed and
 your python version meets all dependencies.
 
 
 
 ##  Test the package
-Go inside the folder "scripts/" and run: 'python run_test.py'
+Go inside the folder "scripts/" and run: `python run_test.py`.
 

@@ -1,5 +1,5 @@
-PYNNGRID
-=======
+NEURAL NETWORK GRIDDING METHOD
+==============================
 
 
 
@@ -34,7 +34,7 @@ Procedure:
 
 3. Activate environment: 'source activate iter-rec'.
 
-4. Download the repo (if not downloaded yet): `git clone git@github.com:arcaduf/pynngrid.git`.
+4. Download the repo: `git clone git@github.com:arcaduf/pynngrid.git`.
 
 5. Go inside the folder and install the C code for the backprojector: `python setup.py`.
 
